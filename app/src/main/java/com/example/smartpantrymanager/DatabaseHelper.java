@@ -11,6 +11,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -179,18 +181,92 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return false;
     }
 
-    // PANTRY METHODS
+    private boolean isValidPantryItem(PantryItem item) {
+        if (item == null) {
+            return false;
+        }
+
+        String name = item.getName();
+
+        if (name == null || name.trim().isEmpty()) {
+            return false;
+        }
+
+        double quantity = item.getQuantity();
+
+        if (quantity <= 0
+                || Double.isNaN(quantity)
+                || Double.isInfinite(quantity)) {
+            return false;
+        }
+
+        return isValidExpiryDate(item.getExpiryDate());
+    }
+
+    private boolean isValidExpiryDate(String expiryDate) {
+        if (expiryDate == null
+                || expiryDate.trim().isEmpty()
+                || expiryDate.trim().equalsIgnoreCase("Not specified")) {
+            return true;
+        }
+
+        String cleanedDate = expiryDate.trim();
+
+        if (!cleanedDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return false;
+        }
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.ROOT
+        );
+
+        dateFormat.setLenient(false);
+
+        try {
+            return dateFormat.parse(cleanedDate) != null;
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+
+    private ContentValues createPantryValues(PantryItem item) {
+        ContentValues values = new ContentValues();
+
+        String cleanedName = item.getName()
+                .trim()
+                .replaceAll("\\s+", " ");
+
+        String unit = item.getUnit();
+        String expiryDate = item.getExpiryDate();
+
+        values.put("name", cleanedName);
+        values.put("quantity", item.getQuantity());
+        values.put("unit", unit == null ? null : unit.trim());
+
+        if (expiryDate == null
+                || expiryDate.trim().isEmpty()
+                || expiryDate.trim().equalsIgnoreCase("Not specified")) {
+            values.put("expiry_date", "Not specified");
+        } else {
+            values.put("expiry_date", expiryDate.trim());
+        }
+
+        return values;
+    }
 
     public long addPantryItem(PantryItem item) {
+        if (!isValidPantryItem(item)) {
+            return -1;
+        }
+
         SQLiteDatabase db = getWritableDatabase();
 
-        ContentValues values = new ContentValues();
-        values.put("name", item.getName());
-        values.put("quantity", item.getQuantity());
-        values.put("unit", item.getUnit());
-        values.put("expiry_date", item.getExpiryDate());
-
-        return db.insert(TABLE_PANTRY, null, values);
+        return db.insert(
+                TABLE_PANTRY,
+                null,
+                createPantryValues(item)
+        );
     }
 
     public List<PantryItem> getAllPantryItems() {
@@ -217,17 +293,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public int updatePantryItem(PantryItem item) {
-        SQLiteDatabase db = getWritableDatabase();
+        if (!isValidPantryItem(item) || item.getId() <= 0) {
+            return 0;
+        }
 
-        ContentValues values = new ContentValues();
-        values.put("name", item.getName());
-        values.put("quantity", item.getQuantity());
-        values.put("unit", item.getUnit());
-        values.put("expiry_date", item.getExpiryDate());
+        SQLiteDatabase db = getWritableDatabase();
 
         return db.update(
                 TABLE_PANTRY,
-                values,
+                createPantryValues(item),
                 "id = ?",
                 new String[]{String.valueOf(item.getId())}
         );
@@ -242,8 +316,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 new String[]{String.valueOf(id)}
         );
     }
-
-    // SHOPPING-LIST METHODS
 
     public long addShoppingItem(String name) {
         return addShoppingItem(name, 1.0, "item");
@@ -368,7 +440,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     private String normalizeShoppingUnit(String unit) {
-
         if (unit == null || unit.trim().isEmpty()) {
             return "item";
         }
@@ -440,7 +511,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     private double getMassFactor(String unit) {
-
         switch (unit.toLowerCase(Locale.ROOT)) {
             case "mg":
                 return 0.001;
@@ -457,7 +527,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     private double getVolumeFactor(String unit) {
-
         switch (unit.toLowerCase(Locale.ROOT)) {
             case "ml":
                 return 1.0;
@@ -519,8 +588,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 new String[]{String.valueOf(id)}
         );
     }
-
-    // RECIPE METHODS
 
     public List<Recipe> getAllRecipes() {
         List<Recipe> recipes = new ArrayList<>();
