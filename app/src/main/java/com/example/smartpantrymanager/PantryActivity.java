@@ -510,27 +510,36 @@ public class PantryActivity extends Activity {
         expiryField.setClickable(true);
         form.addView(expiryField);
 
-        expiryField.setOnClickListener(view -> {
-            Calendar calendar = Calendar.getInstance();
+        final Calendar selectedExpiryDate = Calendar.getInstance();
 
-            if (existingItem != null
-                    && existingItem.getExpiryDate() != null
-                    && existingItem.getExpiryDate()
-                    .matches("\\d{4}-\\d{2}-\\d{2}")) {
+        if (isEditing && existingItem.getExpiryDate() != null) {
+            String savedDate = existingItem.getExpiryDate().trim();
 
-                String[] parts = existingItem.getExpiryDate()
-                        .split("-");
+            SimpleDateFormat dateFormat =
+                    new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
+            dateFormat.setLenient(false);
 
-                calendar.set(
-                        Integer.parseInt(parts[0]),
-                        Integer.parseInt(parts[1]) - 1,
-                        Integer.parseInt(parts[2])
-                );
+            try {
+                Date parsedDate = dateFormat.parse(savedDate);
+
+                if (parsedDate != null) {
+                    selectedExpiryDate.setTime(parsedDate);
+                }
+            } catch (ParseException ignored) {
+                // Use today's date when no valid saved date exists.
             }
+        }
 
+        expiryField.setOnClickListener(view -> {
             DatePickerDialog datePicker = new DatePickerDialog(
                     PantryActivity.this,
                     (datePickerView, year, month, day) -> {
+                        selectedExpiryDate.set(
+                                year,
+                                month,
+                                day
+                        );
+
                         String date = String.format(
                                 Locale.ROOT,
                                 "%04d-%02d-%02d",
@@ -541,9 +550,9 @@ public class PantryActivity extends Activity {
 
                         expiryField.setText(date);
                     },
-                    calendar.get(Calendar.YEAR),
-                    calendar.get(Calendar.MONTH),
-                    calendar.get(Calendar.DAY_OF_MONTH)
+                    selectedExpiryDate.get(Calendar.YEAR),
+                    selectedExpiryDate.get(Calendar.MONTH),
+                    selectedExpiryDate.get(Calendar.DAY_OF_MONTH)
             );
 
             datePicker.show();
