@@ -29,7 +29,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
+import java.util.TimeZone;
 
 public class PantryActivity extends Activity {
 
@@ -47,18 +47,9 @@ public class PantryActivity extends Activity {
             new ArrayList<>();
 
     private final String[] metricUnits = {
-            "g",
-            "kg",
-            "mL",
-            "L",
-            "mg",
-            "item",
-            "piece",
-            "clove",
-            "slice",
-            "packets",
-            "cans",
-            "bottles"
+            "g", "kg", "mL", "L", "mg",
+            "item", "piece", "clove", "slice",
+            "packets", "cans", "bottles"
     };
 
     private final String[] filterOptions = {
@@ -359,18 +350,12 @@ public class PantryActivity extends Activity {
 
             Calendar expiryCalendar = Calendar.getInstance();
             expiryCalendar.setTime(expiry);
-            setToStartOfDay(expiryCalendar);
 
             Calendar todayCalendar = Calendar.getInstance();
-            setToStartOfDay(todayCalendar);
 
-            long differenceMillis =
-                    expiryCalendar.getTimeInMillis()
-                            - todayCalendar.getTimeInMillis();
-
-            long daysUntilExpiry = TimeUnit.MILLISECONDS.toDays(
-                    differenceMillis
-            );
+            long daysUntilExpiry =
+                    getCalendarDayNumber(expiryCalendar)
+                            - getCalendarDayNumber(todayCalendar);
 
             if (daysUntilExpiry < 0) {
                 return "EXPIRED";
@@ -395,11 +380,21 @@ public class PantryActivity extends Activity {
         }
     }
 
-    private void setToStartOfDay(Calendar calendar) {
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
+    private long getCalendarDayNumber(Calendar date) {
+        Calendar utcDate = Calendar.getInstance(
+                TimeZone.getTimeZone("UTC"),
+                Locale.ROOT
+        );
+
+        utcDate.clear();
+
+        utcDate.set(
+                date.get(Calendar.YEAR),
+                date.get(Calendar.MONTH),
+                date.get(Calendar.DAY_OF_MONTH)
+        );
+
+        return utcDate.getTimeInMillis() / 86400000L;
     }
 
     private void updatePantryList() {
