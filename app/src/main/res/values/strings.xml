@@ -1,0 +1,7 @@
+
+<resources>
+    <string name="app_name">Smart Pantry Manager</string>
+    <string name="home_description">Manage ingredients and discover recipes using the ingredients you have.</string>
+    <string name="my_pantry">My Pantry</string>
+    <string name="suggested_recipes">Suggested Recipes</string>
+</resources>
